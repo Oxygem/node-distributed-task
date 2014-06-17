@@ -68,7 +68,7 @@ Shared `config.json`:
 
     {
         state_optional: true; // allow the task to continue running when Redis goes down
-                              // shouldn't happen but no guarantee the task won't also be requeued w/ multiple distributors
+                              // shouldn't happen but no guarantee the task won't also be requeued w/ multiple distributors-over-WAN
     }
 
 #### Task Status
