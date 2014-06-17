@@ -83,9 +83,11 @@ Shared `config.json`:
 + Both distributor and worker acknowledge disconnect on stream close + after missed health check
     * distributor stops sending tasks to this worker (watching for failed tasks is separate)
     * worker stops running tasks for this distributor (which should requeue them)
-+ Upon disconnect from Redis workers workers, for each connected distributor:
++ Upon disconnect from Redis workers, for each connected distributor:
     * check distributor connected
-    * if so, assumes distributor also lost Redis connection & won't requeue, continue distributor tasks w/o `state_optional`
+    * if so, assumes distributor also lost Redis connection & won't requeue
+    * continue distributor tasks w/o `state_optional`
     * stop all other tasks from this distributor
-+ Distributors watch for own and all (longer interval) tasks w/ state `RUNNING` but out of date timestamps, requeues
++ Distributors watch for tasks w/ state `RUNNING` but out of date timestamps, requeues
 + Same as above for `STOPPED`  & `END` tasks
++ Distributors watch their own tasks on a short interval, and all tasks on a long interval
