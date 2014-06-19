@@ -21,9 +21,9 @@
 
 ## Synopsis
 
-Shared `config.json`:
+##### Shared config.json
 
-```
+```json
 {
     "debug": true,
     "debug_netev": false,
@@ -43,18 +43,18 @@ Shared `config.json`:
 }
 ```
 
-`distributor.js`:
+##### distributor.js
 
-```
+```js
 #!/usr/bin/env node
 
 var distributor = require('../distributed-task/distributor');
 distributor.init(require('./config.json'));
 ```
 
-`worker.js`:
+##### worker.js
 
-```
+```js
 #!/usr/bin/env node
 
 var worker = require('../distributed-task/worker');
@@ -66,12 +66,14 @@ worker.init(require('./config.json'));
 
 #### Task
 
+```
 {
     clean_end: true,      // allow distributors to clean up the task when it ends (& loose end status)
     state_optional: true; // allow the task to continue running when Redis goes down
                           // shouldn't happen but no guarantee the task won't also be requeued w/ multiple distributors-over-WAN
                           // it basically assumes all distributors share the same connection to Redis
 }
+```
 
 #### Task Status
 
