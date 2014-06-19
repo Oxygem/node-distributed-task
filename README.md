@@ -24,41 +24,41 @@
 Shared `config.json`:
 
 ```
-    {
-        "debug": true,
-        "debug_netev": false,
-        "share_key": "abc",
+{
+    "debug": true,
+    "debug_netev": false,
+    "share_key": "abc",
+    "host": "localhost",
+    "port": 5000,
+    "key": "test/tls/key.pem",
+    "cert": "test/tls/certificate.pem",
+    "loop_interval": 10000,
+    "redis": {
         "host": "localhost",
-        "port": 5000,
-        "key": "test/tls/key.pem",
-        "cert": "test/tls/certificate.pem",
-        "loop_interval": 10000,
-        "redis": {
-            "host": "localhost",
-            "port": 6379
-        },
-        "distributors": [
-            ["localhost", 5000]
-        ]
-    }
+        "port": 6379
+    },
+    "distributors": [
+        ["localhost", 5000]
+    ]
+}
 ```
 
 `distributor.js`:
 
 ```
-    #!/usr/bin/env node
+#!/usr/bin/env node
 
-    var distributor = require('../distributed-task/distributor');
-    distributor.init(require('./config.json'));
+var distributor = require('../distributed-task/distributor');
+distributor.init(require('./config.json'));
 ```
 
 `worker.js`:
 
 ```
-    #!/usr/bin/env node
+#!/usr/bin/env node
 
-    var worker = require('../distributed-task/worker');
-    worker.init(require('./config.json'));
+var worker = require('../distributed-task/worker');
+worker.init(require('./config.json'));
 ```
 
 
@@ -66,12 +66,12 @@ Shared `config.json`:
 
 #### Task
 
-    {
-        clean_end: true,      // allow distributors to clean up the task when it ends (& loose end status)
-        state_optional: true; // allow the task to continue running when Redis goes down
-                              // shouldn't happen but no guarantee the task won't also be requeued w/ multiple distributors-over-WAN
-                              // it basically assumes all distributors share the same connection to Redis
-    }
+{
+    clean_end: true,      // allow distributors to clean up the task when it ends (& loose end status)
+    state_optional: true; // allow the task to continue running when Redis goes down
+                          // shouldn't happen but no guarantee the task won't also be requeued w/ multiple distributors-over-WAN
+                          // it basically assumes all distributors share the same connection to Redis
+}
 
 #### Task Status
 
