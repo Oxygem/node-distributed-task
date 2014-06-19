@@ -37,7 +37,6 @@ Shared `config.json`:
             "host": "localhost",
             "port": 6379
         },
-
         "distributors": [
             ["localhost", 5000]
         ]
@@ -62,13 +61,16 @@ Shared `config.json`:
     worker.init(require('./config.json'));
 ```
 
+
 ## Definitions
 
 #### Task
 
     {
+        clean_end: true,      // allow distributors to clean up the task when it ends (& loose end status)
         state_optional: true; // allow the task to continue running when Redis goes down
                               // shouldn't happen but no guarantee the task won't also be requeued w/ multiple distributors-over-WAN
+                              // it basically assumes all distributors share the same connection to Redis
     }
 
 #### Task Status
@@ -77,17 +79,29 @@ Shared `config.json`:
 + `STOPPED` - task stopped intentionally by distributor/worker loosing related worker/distributor connection
 + `END` - task is complete, pending cleanup
 
+#### Redis Bits
+
++ `new-task` - simple list based queue
++ `tasks` - set of all task_id's
++ `task-<uuid>` - individual task details
+
 #### Failover/HA Policies
 
++ Distributors/workers/Redis are generally expected to be up
+    * reconnects are attempted every loop (w/ no backoff)
+    * shorter loop is recommended for workers than distributors
++ All distributors/workers must have the same timezone set
 + Distributors/workers send health checks to each other according to a configured time interval
 + Both distributor and worker acknowledge disconnect on stream close + after missed health check
-    * distributor stops sending tasks to this worker (watching for failed tasks is separate)
+    * distributor flags worker as down and clears after interval, will requeue tasks
     * worker stops running tasks for this distributor (which should requeue them)
-+ Upon disconnect from Redis workers, for each connected distributor:
-    * check distributor connected
-    * if so, assumes distributor also lost Redis connection & won't requeue
-    * continue distributor tasks w/o `state_optional`
++ Upon disconnect from Redis: workers, for each connected distributor:
+    * notify the distributor, which stops sending new task requests
+    * pause running distributor tasks
+    * check if we're connected to the distributor
+    * if so, assumes distributor has also lost Redis connection & won't requeue
+    * continue distributor tasks w/o `state_optional = true`
     * stop all other tasks from this distributor
-+ Distributors watch for tasks w/ state `RUNNING` but out of date timestamps, requeues
-+ Same as above for `STOPPED`  & `END` tasks
++ Distributors watch for tasks w/ state `STOPPED` & `RUNNING` w/out of date timestamp, requeues
++ Same as above for `END` tasks with `clean_end = true`
 + Distributors watch their own tasks on a short interval, and all tasks on a long interval
