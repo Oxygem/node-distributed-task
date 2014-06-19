@@ -66,7 +66,7 @@ worker.init(require('./config.json'));
 
 #### Task
 
-```
+```js
 {
     clean_end: true,      // allow distributors to clean up the task when it ends (& loose end status)
     state_optional: true; // allow the task to continue running when Redis goes down
