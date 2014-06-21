@@ -21,22 +21,19 @@
 
 ## Synopsis
 
-##### Shared config.json
+##### Config.json
 
 ```json
 {
-    "debug": true,
-    "debug_netev": false,
     "share_key": "abc",
-    "host": "localhost",
-    "port": 5000,
     "key": "test/tls/key.pem",
     "cert": "test/tls/certificate.pem",
-    "loop_interval": 10000,
     "redis": {
         "host": "localhost",
         "port": 6379
     },
+    "host": "localhost",
+    "port": 5000,
     "distributors": [
         ["localhost", 5000]
     ]
@@ -59,7 +56,13 @@ distributor.init(require('./config.json'));
 
 var worker = require('../distributed-task/worker');
 worker.init(require('./config.json'));
+worker.addTask('name', someFunction);
 ```
+
+
+## Full Example
+
+A full example (almost deploy ready) can be found [here](./example).
 
 
 ## Definitions
@@ -90,8 +93,7 @@ worker.init(require('./config.json'));
 #### Failover/HA Policies
 
 + Distributors/workers/Redis are generally expected to be up
-    * reconnects are attempted every loop (w/ no backoff)
-    * shorter loop is recommended for workers than distributors
++ A shorter loop is recommended for workers than distributors
 + All distributors/workers must have the same timezone set
 + Distributors/workers send health checks to each other according to a configured time interval
 + Both distributor and worker acknowledge disconnect on stream close + after missed health check
