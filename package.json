@@ -1,0 +1,12 @@
+{
+    "name": "distributed-task",
+    "version": "0.0.2",
+    "repository": {
+        "type": "git",
+        "url": "http://github.com/Oxygem/node-distributed-task"
+    },
+    "dependencies": {
+        "netev": ">=0.9.4",
+        "redis": ">=0.10.0"
+    }
+}
