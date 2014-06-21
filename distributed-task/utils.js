@@ -5,6 +5,20 @@
 'use strict';
 
 
+var colors,
+    red,
+    blue,
+    green;
+try {
+    colors = require('colors'),
+    red = function(str) { return str.red; },
+    blue = function(str) { return str.blue; },
+    green = function(str) { return str.green; };
+} catch(e) {
+    red = blue = green = function(str) { return str; }
+}
+
+
 var util = {
     receiveUntil: function(stream, want, callback, options) {
         var buffer = '';
@@ -33,13 +47,14 @@ var util = {
         stream.on('data', onData);
     },
 
-    log: function(data) {
+    log: function(action, data) {
         if(this.debug) {
-            var args = Array.prototype.slice.call(arguments, 1);
+            data = data || '';
+            var args = Array.prototype.slice.call(arguments, 2);
             if(args.length == 0) {
-                console.log(this.log_prefix + data.toString());
+                console.log(green(this.log_prefix) + blue(action) + ' ' + data.toString());
             } else {
-                args.unshift(this.log_prefix + data.toString());
+                args.unshift(green(this.log_prefix) + blue(action) + ' ' + data.toString());
                 console.log.apply(console, args);
             }
         }
@@ -48,9 +63,9 @@ var util = {
     error: function(data) {
         var args = Array.prototype.slice.call(arguments, 1);
         if(args.length == 0) {
-            console.log(this.log_prefix + data.toString());
+            console.log(red(this.log_prefix + data.toString()));
         } else {
-            args.unshift(this.log_prefix + data.toString());
+            args.unshift(red(this.log_prefix + data.toString()));
             console.log.apply(console, args);
         }
     }

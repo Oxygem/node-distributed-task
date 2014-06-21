@@ -15,7 +15,7 @@ var tls = require('tls'),
 
 var Distributor = function() {
     events.EventEmitter.call(this);
-    this.log_prefix = '[Distributor]: ';
+    this.log_prefix = '[Distributor] ';
 
     this.config = {};
     this.workers = [];
@@ -30,7 +30,7 @@ var Distributor = function() {
         this.debug_netev = config.debug_netev || false;
         if(this.debug) {
             utils.log.call(self, 'debug enabled');
-            utils.log.call(self, 'config dump: ', config);
+            utils.log.call(self, 'config dump', false, config);
         }
 
         // Start the server workers connect to
@@ -41,7 +41,7 @@ var Distributor = function() {
         server.listen(config.port, config.host);        // Bind up server
         server.on('secureConnection', function(stream) {
             _addWorker.call(self, stream);
-            utils.log.call(self, 'client connected, verifying worker...');
+            utils.log.call(self, 'client connected', 'verifying worker...');
         });
         server.on('error', function(err) {
             utils.error.call(self, err.toString());
@@ -50,7 +50,7 @@ var Distributor = function() {
         server.on('listening', function() {
             this.server = server;
             self.emit('ready');
-            utils.log.call(self, 'listening for workers on: ' + config.port);
+            utils.log.call(self, 'listening for workers on', config.port);
         });
 
         // Start the monitoring loop
@@ -75,21 +75,23 @@ var Distributor = function() {
                 worker.hostname = hostname,
                 worker.load = 0;
                 self.emit('workerAdded', hostname);
-                utils.log.call(self, 'worker added: ' + hostname);
+                utils.log.call(self, 'worker added', hostname);
             });
 
             // Monitor health
             worker.on('healthCheck', function(load) {
                 worker.load = load;
-                utils.log.call(self, 'received health check for ' + worker.hostname + ': ', load);
+                utils.log.call(self, 'received health check', worker.hostname + ': ', load);
             });
 
             // Monitor workers Redis connection
             worker.on('redisDown', function() {
                 worker.active = false;
+                utils.log.call(self, 'worker Redis down', worker.hostname);
             });
             worker.on('redisUp', function() {
                 worker.active = true;
+                utils.log.call(self, 'worker Redis up', worker.hostname);
             });
 
             // Monitor exits
@@ -97,7 +99,7 @@ var Distributor = function() {
             stream.on('end', function() {
                 worker.active = false;
                 self.workers = self.workers.slice(self.workers.indexOf(worker));
-                utils.log.call(self, 'worker disconnected: ' + worker.hostname);
+                utils.log.call(self, 'worker disconnected', worker.hostname);
             });
             stream.on('error', function(err) {
                 utils.error.call(self, 'workers stream error', err);
@@ -117,7 +119,7 @@ var Distributor = function() {
             try {
                 task_data = JSON.parse(reply);
             } catch(e) {
-                return utils.error.call(self, 'invalid task JSON: ' + reply);
+                return utils.error.call(self, 'invalid task JSON', reply);
             }
             if(!task_data.id || !task_data.function || !task_data.data) {
                 return utils.error.call(self, 'invalid task', task_data);
@@ -155,7 +157,7 @@ var Distributor = function() {
             .set('task-' + task_data.id, JSON.stringify(task_data))
             // On callback send task_id to chosen worker + add to this.tasks
             .exec(function(err, replies) {
-                utils.log.call(self, 'task sent to ' + low_load_worker.hostname + ': ' + task_data.id);
+                utils.log.call(self, 'task sent', 'worker: ' + low_load_worker.hostname, 'task_id: ' + task_data.id);
                 self.tasks[task_data.id] = low_load_worker;
                 low_load_worker.emit('addTask', task_data.id);
             });
@@ -197,7 +199,7 @@ var Distributor = function() {
     };
 
     this.closeWorker = function(worker) {
-        utils.log.call(this, 'closing worker: ' + worker.hostname);
+        utils.log.call(this, 'closing worker', worker.hostname);
         worker.stream.end();
     };
 
