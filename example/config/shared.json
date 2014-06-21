@@ -1,0 +1,13 @@
+{
+    "debug": true,
+    "debug_netev": false,
+    "share_key": "abc",
+    "key": "example/tls/key.pem",
+    "cert": "example/tls/certificate.pem",
+    "loop_interval": 2000,
+    "backoff": 5000,
+    "redis": {
+        "host": "localhost",
+        "port": 6379
+    }
+}
