@@ -71,7 +71,7 @@ var Distributor = function() {
             stream.write('HELLO WORKER');
             // When the worker sends its hostname (immediate), activate
             worker.on('hostname', function(hostname) {
-                worker.active = true,
+                worker.active = false,
                 worker.hostname = hostname,
                 worker.load = 0;
                 self.emit('workerAdded', hostname);
@@ -144,17 +144,20 @@ var Distributor = function() {
             else(worker.load < low_load_worker.load)
                 low_load_worker = worker;
         }
-        if(!low_load_worker) return utils.error.call(this, 'no active workers');
+        if(!low_load_worker) {
+            this.redis.lpush('new-task', JSON.stringify(task_data));
+            return utils.error.call(this, 'no active workers for task', task_data.id);
+        }
 
-        // Assign some stuff
-        task_data.state = 'RUNNING',
-        task_data.start = now,
-        task_data.update = now;
+        var task_key = 'task-' + task_data.id;
 
         // Copy task_id into Redis list & task_data atomically
         this.redis.multi()
             .sadd('tasks', task_data.id)
-            .set('task-' + task_data.id, JSON.stringify(task_data))
+            .hset(task_key, 'state', 'RUNNING')
+            .hset(task_key, 'start', now)
+            .hset(task_key, 'update', now)
+            .hset(task_key, 'data', JSON.stringify(task_data))
             // On callback send task_id to chosen worker + add to this.tasks
             .exec(function(err, replies) {
                 utils.log.call(self, 'task sent', 'worker: ' + low_load_worker.hostname, 'task_id: ' + task_data.id);
@@ -168,31 +171,59 @@ var Distributor = function() {
 
         // Loop tasks, check timestamp recent
         for(var i=0; i<task_ids.length; i++) {
-            // Get task from Redis
-            this.redis.get('task-' + task_ids[i], function(err, reply) {
-                var task_data = JSON.parse(reply);
+            (function(i) {
+                // Get task state and update
+                var task_id = task_ids[i];
+                this.redis.hmget('task-' + task_id, ['state', 'update'], function(err, reply) {
+                    if(err)
+                        return utils.error.call(self, 'Redis error checking task', task_id);
 
-                // If state STOPPED, requeue
+                    var state = reply[0],
+                        update = reply[1];
 
-                // If state RUNNING but no timestamp, requeue
-                console.log(task_data);
-            });
+                    // Requeue stopped
+                    if(state == 'STOPPED') {
+                        self.requeueTask(task_id);
+                    // Check update within time limit
+                    } else if(state == 'RUNNING') {
+                        var now = new Date.getTime();
+                        // Requeue if not
+                        if(now - update > self.config.task_timeout) {
+                            self.requeueTask(task_id);
+                        }
+                    // Clean up
+                    } else if(state == 'END') {
+                        // TODO: check if task cleanup is true, if so shift task_id to cleanup queue for external process
+                        self.removeTask(task_id);
+                    // Unknown state
+                    } else {
+                        // TODO: delete/log alien states
+                    }
+                });
+            })(i);
         }
     };
 
     this.checkAllTasks = function() {
-        utils.log.call(this, 'checking all tasks');
-        var self = this;
+        utils.log.call(this, 'checking all tasks...');
 
-        // Get all tasks from Redis
-        // this.checkTasks on them
+        // Get task set from Redis, send to checkTasks
+        this.redis.sget('tasks', function(err, reply) {
+            console.log(reply);
+        });
     };
 
     this.requeueTask = function(task_id) {
         var self = this;
 
-        // Atomically remove a task_id & task_data and push task_id to new-task list
+        // Atomically remove task-id hash and push task_id to new-task list
     };
+
+    this.removeTask = function(task_id) {
+        var self = this;
+
+        // Atomically remove task-id hash and task_id list from tasks list
+    }
 
     this.getWorkers = function() {
         return this.workers;
@@ -225,38 +256,39 @@ var Distributor = function() {
         var self = this;
 
         // Check for Redis
-        // upon disconnect we close all worker connections & attempt reconect
-        // server remains up, workers will reconnect almost immediately if possible
-        // by closing all workers we force them to stop all our tasks
-        if(!this.redis_up) {
-            if(!this.redis)
+        if(this.redis === undefined || this.redis === false) {
+            if(this.redis === undefined)
                 utils.log.call(this, 'connecting to Redis...');
 
+            // Attempt to connect
+            this.redis = true;
             var redis_client = redis.createClient(config.redis.port, config.redis.host, {
                 enable_offline_queue: false
             });
             redis_client.on('ready', function() {
-                if(!self.redis_up) {
-                    utils.log.call(self, 'connected to Redis');
-                    self.redis_up = true;
-                }
+                self.redis = redis_client;
+                utils.log.call(self, 'connected to Redis');
             });
             redis_client.on('error', function(err) {
-                _onRedisDown.call(self, err);
+                if(self.redis === true) {
+                    setTimeout(function() { self.redis = false; }, self.backoff || 10000);
+                } else {
+                    utils.error.call(self, 'Redis is down', err);
+                    delete self.redis;
+                }
             });
-            this.redis = redis_client;
-        } else {
+        } else if(this.redis !== true) {
             try {
                 this.redis.ping();
+
+                this.getNewTasks();
+                this.checkTasks(Object.keys(this.tasks));
+
+                if(this.loops % this.check_all_interval == 0){
+                    this.checkAllTasks();
+                }
             } catch(err) {
-                return _onRedisDown.call(this, err);
-            }
-
-            this.getNewTasks();
-            this.checkTasks(Object.keys(this.tasks));
-
-            if(this.loops % this.check_all_interval == 0){
-                this.checkAllTasks();
+                _onRedisDown.call(this, err);
             }
         }
     };

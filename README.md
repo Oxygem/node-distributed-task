@@ -90,9 +90,8 @@ A full example (almost deploy ready) can be found [here](./example).
 + `tasks` - set of all task_id's
 + `task-<uuid>` - individual task details
 
-#### Failover/HA Policies
+#### Failover/HA
 
-+ Distributors/workers/Redis are generally expected to be up
 + A shorter loop is recommended for workers than distributors
 + All distributors/workers must have the same timezone set
 + Distributors/workers send health checks to each other according to a configured time interval
@@ -109,3 +108,4 @@ A full example (almost deploy ready) can be found [here](./example).
 + Distributors watch for tasks w/ state `STOPPED` & `RUNNING` w/out of date timestamp, requeues
 + Same as above for `END` tasks with `clean_end = true`
 + Distributors watch their own tasks on a short interval, and all tasks on a long interval
++ Upon reconnect to Redis, workers check `state_optional` task timestamps before updating, and stop if newer one
