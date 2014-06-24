@@ -1,6 +1,6 @@
 #!/bin/sh
 
-VERSION=`cat package.json | grep -oEi '[0-9]+.[0-9]+.[0-9]+'`
+VERSION=`cat package.json | grep -oEi '[0-9]+.[0-9]+.[0-9]+' | head -1`
 
 echo "# node-distributed-task"
 echo "# Releasing: v$VERSION"
