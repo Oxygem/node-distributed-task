@@ -63,10 +63,10 @@ var util = {
     error: function(data) {
         var args = Array.prototype.slice.call(arguments, 1);
         if(args.length == 0) {
-            console.log(red(this.log_prefix + data.toString()));
+            console.error(red(this.log_prefix + data.toString()));
         } else {
             args.unshift(red(this.log_prefix + data.toString()));
-            console.log.apply(console, args);
+            console.error.apply(console, args);
         }
     }
 };
