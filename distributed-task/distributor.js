@@ -176,12 +176,16 @@ var Distributor = function() {
             (function(i) {
                 // Get task state and update
                 var task_id = task_ids[i];
-                self.redis.hmget('task-' + task_id, ['state', 'update'], function(err, reply) {
+                self.redis.hmget('task-' + task_id, ['state', 'update', 'data'], function(err, reply) {
                     if(err)
-                        return utils.error.call(self, 'Redis error checking task', task_id);
+                        return utils.error.call(self, 'Redis error checking task', task_id, err);
 
                     var state = reply[0],
-                        update = reply[1];
+                        update = reply[1],
+                        task_data = JSON.parse(reply[2]),
+                        data = JSON.parse(task_data.data);
+
+                    utils.log.call(self, 'task state', task_id, state);
 
                     // Requeue stopped
                     if(state == 'STOPPED') {
@@ -195,13 +199,23 @@ var Distributor = function() {
                         }
                     // Clean up
                     } else if(state == 'END') {
-                        // TODO: check if task cleanup is true, if so shift task_id to cleanup queue for external process
-                        self.removeTask(task_id);
+                        // If the task is to be manually cleaned up
+                        if(data.manual_end) {
+                            // Move off tasks into end-task, external must remove hashes
+                            self.redis.multi()
+                                .srem('tasks', task_id)
+                                .sadd('end-task', task_id)
+                                .exec(function(err, reply) {
+                                    delete self.tasks[task_id];
+                                    utils.log.call(self, 'task moved to end queue', task_id);
+                                });
+                        } else {
+                            self.removeTask(task_id);
+                        }
                     // Unknown state
                     } else {
                         // Log alien state
                         utils.error.call(self, 'task in alien state', task_id);
-                        // TODO: remove if configured to do so
                     }
                 });
             })(i);
