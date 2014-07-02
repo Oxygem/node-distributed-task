@@ -197,7 +197,9 @@ var Distributor = function() {
                         self.removeTask(task_id);
                     // Unknown state
                     } else {
-                        // TODO: delete/log alien states
+                        // Log alien state
+                        utils.error.call(self, 'task in alien state', task_id);
+                        // TODO: remove if configured to do so
                     }
                 });
             })(i);
@@ -220,9 +222,16 @@ var Distributor = function() {
     };
 
     this.removeTask = function(task_id) {
+        utils.log.call(this, 'removing task...', task_id);
         var self = this;
 
         // Atomically remove task-id hash and task_id list from tasks list
+        this.redis.multi()
+            .sdel(task_id)
+            .hdel(task_id, ['state', 'start', 'update', 'data'])
+            .exec(function(err, reply) {
+                utils.log.call(self, 'task removed', task_id);
+            });
     }
 
     this.getWorkers = function() {
