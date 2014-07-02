@@ -167,6 +167,8 @@ var Distributor = function() {
     };
 
     this.checkTasks = function(task_ids) {
+        if(task_ids.length == 0) return;
+        utils.log.call(this, 'checking tasks...', task_ids);
         var self = this;
 
         // Loop tasks, check timestamp recent
@@ -174,7 +176,7 @@ var Distributor = function() {
             (function(i) {
                 // Get task state and update
                 var task_id = task_ids[i];
-                this.redis.hmget('task-' + task_id, ['state', 'update'], function(err, reply) {
+                self.redis.hmget('task-' + task_id, ['state', 'update'], function(err, reply) {
                     if(err)
                         return utils.error.call(self, 'Redis error checking task', task_id);
 
@@ -216,9 +218,22 @@ var Distributor = function() {
     };
 
     this.requeueTask = function(task_id) {
-        var self = this;
+        utils.log.call(this, 'requing task...', task_id);
+        var self = this,
+            task_key = 'task-' + task_id;
 
-        // Atomically remove task-id hash and push task_id to new-task list
+        // Get the task data
+        this.redis.hget(task_key, ['data'], function(err, reply) {
+            var task_json = JSON.stringify(reply);
+
+            // Atomically remove task-id hash and push original task_data to new-task list
+            self.redis.multi()
+                .hdel(task_key, ['state', 'start', 'update', 'data'])
+                .lpush('new-task', task_json)
+                .exec(function(err, reply) {
+                    utils.log.call(self, 'task requeued', task_id);
+                });
+        });
     };
 
     this.removeTask = function(task_id) {
@@ -227,9 +242,10 @@ var Distributor = function() {
 
         // Atomically remove task-id hash and task_id list from tasks list
         this.redis.multi()
-            .sdel(task_id)
-            .hdel(task_id, ['state', 'start', 'update', 'data'])
+            .srem(task_id)
+            .hdel('task-' + task_id, ['state', 'start', 'update', 'data'])
             .exec(function(err, reply) {
+                delete self.tasks[task_id];
                 utils.log.call(self, 'task removed', task_id);
             });
     }
