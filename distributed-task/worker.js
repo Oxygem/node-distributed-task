@@ -100,6 +100,7 @@ var Worker = function() {
             self.redis.hset('task-' + task.id, 'update', new Date().getTime());
         });
         process.on('_end', function() {
+            utils.log.call(self, 'task ended', task.id);
             self.redis.hset('task-' + task.id, 'state', 'END');
         });
 
@@ -240,7 +241,7 @@ var Worker = function() {
 
                             // If Redis, this will activate the worker
                             if(self.redis) {
-                                dist.emit('redisReady');
+                                dist.emit('redisUp');
                             }
 
                             utils.log.call(self, 'distributor added', dist.hostname);
