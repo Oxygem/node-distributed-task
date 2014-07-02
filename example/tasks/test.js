@@ -5,7 +5,10 @@ var events = require('events'),
 
 module.exports = function(manager, data) {
     events.EventEmitter.call(this);
-    var self = this;
+    var self = this,
+        timeout = 100000 * Math.random();
+
+    manager.log('timing out in ' + timeout);
 
     // This task echos timeout! after one second & stops, to be cleaned up
     var end = setTimeout(function() {
@@ -13,7 +16,7 @@ module.exports = function(manager, data) {
 
         // Notify task finished
         self.emit('_end');
-    }, 1000);
+    }, timeout);
 
 
     // Stop when requested
