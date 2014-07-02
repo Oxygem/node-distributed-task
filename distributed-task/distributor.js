@@ -164,6 +164,8 @@ var Distributor = function() {
                 self.tasks[task_data.id] = low_load_worker;
                 low_load_worker.emit('addTask', task_data.id);
             });
+
+        self.getNewTasks();
     };
 
     this.checkTasks = function(task_ids) {
@@ -185,20 +187,21 @@ var Distributor = function() {
                         task_data = JSON.parse(reply[2]),
                         data = JSON.parse(task_data.data);
 
-                    utils.log.call(self, 'task state', task_id, state);
+                    if(state != 'RUNNING')
+                        utils.log.call(self, 'task state', task_id, state);
 
                     // Requeue stopped
-                    if(state == 'STOPPED') {
+                    if(state === 'STOPPED') {
                         self.requeueTask(task_id);
                     // Check update within time limit
-                    } else if(state == 'RUNNING') {
-                        var now = new Date.getTime();
+                    } else if(state === 'RUNNING') {
+                        var now = new Date().getTime();
                         // Requeue if not
                         if(now - update > self.config.task_timeout) {
                             self.requeueTask(task_id);
                         }
                     // Clean up
-                    } else if(state == 'END') {
+                    } else if(state === 'END') {
                         // If the task is to be manually cleaned up
                         if(data.manual_end) {
                             // Move off tasks into end-task, external must remove hashes
