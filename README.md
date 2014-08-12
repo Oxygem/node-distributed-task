@@ -1,5 +1,8 @@
 # Node Distributed Task
 
+**Discontinued in favour of [TaskSwarm.js](https://github.com/Oxygem/TaskSwarm.js)**, which is based upon this.
+
+
 `distributed-task` provides a framework upon which one can easily build distributed task systems in Node. The original reason for building a new distributed task system was to allow 'watching' of tasks, specifically long/indefinitely running tasks. `distributed-task` consistes of a few features:
 
 + Redis as a global state store
